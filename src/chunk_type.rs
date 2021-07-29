@@ -1,3 +1,29 @@
+
+
+#[derive(PartialEq, Eq)]
+struct ChunkType {
+
+
+  fn bytes(&self) -> &[u8] {}
+  fn is_valid(&self) -> bool {}
+  fn is_critical(&self) -> bool {}
+  fn is_public(&self) -> bool {}
+  fn is_reserved_bit_valid(&self) -> bool {}
+  fn is_safe_to_copy(&self) -> bool
+
+}
+impl TryFrom<[u8; 4]> for ChunkType {
+
+};
+impl FromStr for ChunkType {
+
+}
+impl Display for ChunkType {
+
+}
+
+
+
 #[cfg(test)]
 mod tests {
   use super::*;
