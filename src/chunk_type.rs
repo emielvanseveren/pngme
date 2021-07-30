@@ -5,14 +5,6 @@ use std::{
   str::FromStr,
 };
 
-/*
-Fields of a chunk.
-  length: u32;
-  chunkType: ChunkType;
-  data: [u8; length];
-  crc: u32;
-*/
-
 #[derive(Debug)]
 pub enum ChunkTypeError {
   ByteLengthError(usize),
