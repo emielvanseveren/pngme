@@ -1,28 +1,115 @@
-
-
-#[derive(PartialEq, Eq)]
-struct ChunkType {
-
-
-  fn bytes(&self) -> &[u8] {}
-  fn is_valid(&self) -> bool {}
-  fn is_critical(&self) -> bool {}
-  fn is_public(&self) -> bool {}
-  fn is_reserved_bit_valid(&self) -> bool {}
-  fn is_safe_to_copy(&self) -> bool
-
-}
-impl TryFrom<[u8; 4]> for ChunkType {
-
+use crate::Error;
+use std::{
+  convert::TryFrom,
+  fmt::{Display, Formatter},
+  str::FromStr,
 };
-impl FromStr for ChunkType {
 
+/*
+Fields of a chunk.
+  length: u32;
+  chunkType: ChunkType;
+  data: [u8; length];
+  crc: u32;
+*/
+
+#[derive(Debug)]
+pub enum ChunkTypeError {
+  ByteLengthError(usize),
+  InvalidCharacter,
+}
+impl std::error::Error for ChunkTypeError {}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ChunkType {
+  bytes: [u8; 4],
+}
+
+impl ChunkType {
+  pub fn bytes(&self) -> &[u8] {
+    return &self.bytes;
+  }
+
+  // Byte must be between the lower-case and upper-case ASCII range.
+  // Reserved bit must be valid.
+  pub fn is_valid(&self) -> bool {
+    let valid_chars = self
+      .bytes
+      .iter()
+      .all(|&b| (b >= b'a' && b <= b'z' || (b >= b'A' && b <= b'Z')));
+    valid_chars && self.is_reserved_bit_valid()
+  }
+
+  // A type code is critical if bit 5 of the first byte is 0.
+  pub fn is_critical(&self) -> bool {
+    (self.bytes[0] & 0x20) != 0x20
+  }
+
+  // A type code is public if bit 5 of the second byte is 0.
+  pub fn is_public(&self) -> bool {
+    (self.bytes[1] & 0x20) != 0x20
+  }
+
+  // Bit 5 of the third byte is reserved and must be 0.
+  pub fn is_reserved_bit_valid(&self) -> bool {
+    (self.bytes[2] & 0x20) != 0x20
+  }
+
+  // A type code is safe to copy if bit 5 of the fourth byte is 1.
+  pub fn is_safe_to_copy(&self) -> bool {
+    (self.bytes[3] & 0x20) == 0x20
+  }
+}
+
+impl TryFrom<[u8; 4]> for ChunkType {
+  type Error = Error;
+  fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
+    // todo
+    Ok(Self { bytes: value })
+  }
+}
+
+impl FromStr for ChunkType {
+  type Err = Error;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    let bytes = s.as_bytes();
+
+    if bytes.len() != 4 {
+      return Err(Box::new(ChunkTypeError::ByteLengthError(bytes.len())));
+    }
+
+    let valid_chars = bytes
+      .iter()
+      .all(|&b| (b >= b'a' && b <= b'z' || (b >= b'A' && b <= b'Z')));
+
+    if !valid_chars {
+      return Err(Box::new(ChunkTypeError::InvalidCharacter));
+    }
+
+    let sized: [u8; 4] = [bytes[0], bytes[1], bytes[2], bytes[3]];
+    Ok(ChunkType::try_from(sized)?)
+  }
 }
 impl Display for ChunkType {
-
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    let s = std::str::from_utf8(&self.bytes).map_err(|_| std::fmt::Error)?;
+    write!(f, "{}", s)
+  }
 }
 
-
+impl Display for ChunkTypeError {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    match self {
+      ChunkTypeError::ByteLengthError(actual) => {
+        write!(f, "Expected 4 bytes but received {}", actual)
+      }
+      ChunkTypeError::InvalidCharacter => {
+        write!(f, "Input contains one or more invalid characters")
+      }
+    }
+  }
+}
 
 #[cfg(test)]
 mod tests {
@@ -59,12 +146,16 @@ mod tests {
 
   #[test]
   pub fn test_chunk_type_is_public() {
+    println!(
+      "SHOULD be public..........................................................................\n"
+    );
     let chunk = ChunkType::from_str("RUSt").unwrap();
     assert!(chunk.is_public());
   }
 
   #[test]
   pub fn test_chunk_type_is_not_public() {
+    println!("SHOULD not be public..........................................................................\n");
     let chunk = ChunkType::from_str("RuSt").unwrap();
     assert!(!chunk.is_public());
   }
